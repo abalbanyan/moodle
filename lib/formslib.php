@@ -3205,8 +3205,18 @@ MoodleQuickForm::registerElementType('course', "$CFG->libdir/form/course.php", '
 MoodleQuickForm::registerElementType('cohort', "$CFG->libdir/form/cohort.php", 'MoodleQuickForm_cohort');
 MoodleQuickForm::registerElementType('searchableselector', "$CFG->libdir/form/searchableselector.php", 'MoodleQuickForm_searchableselector');
 MoodleQuickForm::registerElementType('checkbox', "$CFG->libdir/form/checkbox.php", 'MoodleQuickForm_checkbox');
-MoodleQuickForm::registerElementType('date_selector', "$CFG->libdir/form/dateselector.php", 'MoodleQuickForm_date_selector');
-MoodleQuickForm::registerElementType('date_time_selector', "$CFG->libdir/form/datetimeselector.php", 'MoodleQuickForm_date_time_selector');
+// Flatpickr does not have working support for non-gregorian calendars or RTL, so fall back on old date selectors in those cases.
+if (!right_to_left() && \core_calendar\type_factory::get_calendar_instance()->get_name() == 'gregorian') {
+    MoodleQuickForm::registerElementType('date_selector',
+            "$CFG->libdir/form/dateselector.php", 'MoodleQuickForm_date_selector');
+    MoodleQuickForm::registerElementType('date_time_selector',
+            "$CFG->libdir/form/datetimeselector.php", 'MoodleQuickForm_date_time_selector');
+} else {
+    MoodleQuickForm::registerElementType('date_selector',
+            "$CFG->libdir/form/old_dateselector.php", 'MoodleQuickForm_old_date_selector');
+    MoodleQuickForm::registerElementType('date_time_selector',
+            "$CFG->libdir/form/old_datetimeselector.php", 'MoodleQuickForm_old_date_time_selector');
+}
 MoodleQuickForm::registerElementType('duration', "$CFG->libdir/form/duration.php", 'MoodleQuickForm_duration');
 MoodleQuickForm::registerElementType('editor', "$CFG->libdir/form/editor.php", 'MoodleQuickForm_editor');
 MoodleQuickForm::registerElementType('filemanager', "$CFG->libdir/form/filemanager.php", 'MoodleQuickForm_filemanager');

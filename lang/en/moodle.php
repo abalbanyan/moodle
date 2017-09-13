@@ -1713,6 +1713,7 @@ $string['selectanaction'] = 'Select an action';
 $string['selectagroup'] = 'Select a group';
 $string['selectaregion'] = 'Select a region';
 $string['selctauser'] = 'Select a user';
+$string['selectadate'] = 'Select a date...';
 $string['selectall'] = 'Select all';
 $string['selectallusersonpage'] = 'Select all users on this page';
 $string['selectalluserswithcount'] = 'Select all {$a} users';

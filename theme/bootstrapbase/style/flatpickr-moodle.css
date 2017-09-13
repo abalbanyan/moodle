@@ -1,0 +1,9 @@
+/* Flatpickr modifications for Moodle support. */
+.flatpickr-input[readonly]{
+    cursor:pointer!important;
+    background-color:#fff!important;
+}
+.flatpickr-input[disabled]{
+    cursor:not-allowed!important;
+    background-color:#eee!important;
+}

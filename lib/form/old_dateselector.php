@@ -16,12 +16,12 @@
 
 
 /**
- * Group of date and time input element
+ * Group of date input element
  *
- * Contains class for a group of elements used to input a date and time.
+ * Contains class for a group of elements used to input a date.
  *
  * @package   core_form
- * @copyright 2006 Jamie Pratt <me@jamiep.org>
+ * @copyright 2007 Jamie Pratt <me@jamiep.org>
  * @license   http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
@@ -30,38 +30,27 @@ require_once($CFG->libdir . '/form/group.php');
 require_once($CFG->libdir . '/formslib.php');
 
 /**
- * Element used to input a date and time.
+ * Class for a group of elements used to input a date.
  *
- * Class for a group of elements used to input a date and time.
+ * Emulates moodle print_date_selector function
  *
  * @package   core_form
  * @category  form
- * @copyright 2006 Jamie Pratt <me@jamiep.org>
+ * @copyright 2007 Jamie Pratt <me@jamiep.org>
  * @license   http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
-class MoodleQuickForm_date_time_selector extends MoodleQuickForm_group {
+class MoodleQuickForm_old_date_selector extends MoodleQuickForm_group {
 
     /**
-     * Options for the element.
+     * Control the fieldnames for form elements.
      *
      * startyear => int start of range of years that can be selected
      * stopyear => int last year that can be selected
-     * defaulttime => default time value if the field is currently not set
      * timezone => int|float|string (optional) timezone modifier used for edge case only.
      *      If not specified, then date is caclulated based on current user timezone.
      *      Note: dst will be calculated for string timezones only
      *      {@link http://docs.moodle.org/dev/Time_API#Timezone}
-     * step => step to increment minutes by
-     * placeholder => placeholder text to place in the input field for the calendar
-     * time24hr => boolean, if true, displays the time in 24-hour format. Defaults to user
-     *                      preference.
-     * timeformat => string, the time format. Defaults to site/user preference.
-     * locale => string, affects the language of the selector. Defaults to current language.
-     * clear => boolean, if true adds a "clear" button next to the flatpickr, which
-     *              resets the flatpickr to 0. If false, the button will not show, and the
-     *              flatpickr will submit defaulttime if it is cleared with backspace or DEL.
      * optional => if true, show a checkbox beside the date to turn it on (or off)
-     *              (Note - this option does not work with moodleform::repeat_elements())
      * @var array
      */
     protected $_options = array();
@@ -79,7 +68,7 @@ class MoodleQuickForm_date_time_selector extends MoodleQuickForm_group {
     protected $_usedcreateelement = true;
 
     /**
-     * Class constructor
+     * constructor
      *
      * @param string $elementName Element's name
      * @param mixed $elementLabel Label(s) for an element
@@ -89,24 +78,13 @@ class MoodleQuickForm_date_time_selector extends MoodleQuickForm_group {
     public function __construct($elementName = null, $elementLabel = null, $options = array(), $attributes = null) {
         // Get the calendar type used - see MDL-18375.
         $calendartype = \core_calendar\type_factory::get_calendar_instance();
-
-        // Get locale default timeformat and check if it is in 24 or 12 hour format.
-        $timeformat = get_string('strftimetime');
-        $time24hr = true;
-        if (strpos($timeformat, '%p')) {
-            $time24hr = false;
-        }
-        // Note: flatpickr does not support non-gregorian calendar.
         $this->_options = array('startyear' => $calendartype->get_min_year(), 'stopyear' => $calendartype->get_max_year(),
-                'defaulttime' => time(), 'timezone' => 99, 'step' => 5, 'optional' => false, 'clear' => false,
-                'placeholder' => get_string('selectadate'), 'time24hr' => $time24hr, 'timeformat' => $timeformat,
-                'locale' => current_language());
-
+            'defaulttime' => 0, 'timezone' => 99, 'step' => 5, 'optional' => false);
         // TODO MDL-52313 Replace with the call to parent::__construct().
         HTML_QuickForm_element::__construct($elementName, $elementLabel, $attributes);
         $this->_persistantFreeze = true;
         $this->_appendName = true;
-        $this->_type = 'date_time_selector';
+        $this->_type = 'date_selector';
         // set the options, do not bother setting bogus ones
         if (is_array($options)) {
             foreach ($options as $name => $value) {
@@ -119,6 +97,11 @@ class MoodleQuickForm_date_time_selector extends MoodleQuickForm_group {
                 }
             }
         }
+
+        // The YUI2 calendar only supports the gregorian calendar type.
+        if ($calendartype->get_name() === 'gregorian') {
+            form_init_date_js();
+        }
     }
 
     /**
@@ -126,31 +109,9 @@ class MoodleQuickForm_date_time_selector extends MoodleQuickForm_group {
      *
      * @deprecated since Moodle 3.1
      */
-    public function MoodleQuickForm_date_time_selector($elementName = null, $elementLabel = null, $options = array(), $attributes = null) {
+    public function MoodleQuickForm_date_selector($elementName = null, $elementLabel = null, $options = array(), $attributes = null) {
         debugging('Use of class name as constructor is deprecated', DEBUG_DEVELOPER);
         self::__construct($elementName, $elementLabel, $options, $attributes);
-    }
-
-    /**
-     * Utility function to translate PHP strftime date/time tokens to the type of
-     * JavaScript tokens used by flatpickr.
-     * @param string $datestring php strftime formatted datetime string
-     * @return string
-     */
-    public function translate_date_tokens($datestring) {
-        return strtr($datestring, array(
-            '%' => '',  'a' => 'D', 'A' => 'l', 'e' => 'j',
-            'j' => '',  'u' => 'w', 'U' => '',  'V' => '',
-            'W' => '',  'b' => 'M', 'B' => 'M', 'h' => 'M',
-            'Z' => '',  'g' => 'y', 'G' => 'Y', 'k' => 'H',
-            'I' => 'h', 'L' => 'h', 'M' => 'i', 'P' => 'K',
-            'p' => 'K', 's' => 'U', 'z' => '',  'Z' => '',
-            'n' => '',  't' => ' ',
-            'r' => 'h:i:S K', 'R' => 'H:i',
-            'T' => 'H:i:S',   'x' => 'h:i:S K',
-            'X' => 'h:i:S K', 'c' => 'h:i:S K',
-            'D' => 'm/d/y',   'F' => 'Y-m-d'
-        ));
     }
 
     /**
@@ -159,66 +120,29 @@ class MoodleQuickForm_date_time_selector extends MoodleQuickForm_group {
      * @access private
      */
     function _createElements() {
-        global $OUTPUT, $PAGE;
-        $PAGE->requires->js('/lib/flatpickr/flatpickr.min.js');
+        global $OUTPUT;
 
-        // Support different locales.
-        if ($this->_options['locale'] != 'en') {
-            try {
-                $PAGE->requires->js('/lib/flatpickr/l10n/'. $this->_options['locale'] .'.js');
-            } catch (moodle_exception $e) {
-                // If language is not found, fall back on en.
-                $this->_options['locale'] = 'en';
-            }
+        // Get the calendar type used - see MDL-18375.
+        $calendartype = \core_calendar\type_factory::get_calendar_instance();
+
+        $this->_elements = array();
+
+        $dateformat = $calendartype->get_date_order($this->_options['startyear'], $this->_options['stopyear']);
+        // Reverse date element (Day, Month, Year), in RTL mode.
+        if (right_to_left()) {
+            $dateformat = array_reverse($dateformat);
         }
-
-        $inputname = $this->getName();
-        $time24hr = $this->_options['time24hr'] ? 'true' : 'false';
-        $dateformat = get_string('strftimedate', 'langconfig');
-        $timeformat = $this->_options['timeformat'];
-        $datetimeformat = $dateformat . ', ' . $timeformat;
-        $placeholder = (isset($this->_options['placeholder'])) ? $this->_options['placeholder'] : 'Select date...';
-        // For compatibility with names that characters like [] created by moodleform functions such
-        // as repeat_elements, we use getElementsByName instead of getElementsbyId, since HTML ids cannot contain [].
-        $flatpickrdefinition = '
-                flatpickr(document.getElementsByName("'. $inputname .'_flatpickr")[0], {
-                    enableTime: true,
-                    dateFormat: "U",
-                    altInput: true,
-                    altFormat: "'. self::translate_date_tokens($datetimeformat) .'",
-                    wrap: true,
-                    time_24hr: '. $time24hr . ',
-                    locale: "'. $this->_options['locale'] .'",
-                    minuteIncrement: ' . $this->_options['step'] . ',
-                    minDate: new Date('. $this->_options['startyear'] .' , 0, 1),
-                    maxDate: new Date('. $this->_options['stopyear'] .' , 11, 31),
-                    onReady: function(dateObj, dateStr, fp) {
-                        fp.altInput.name = "'.$inputname .'_flatpickr_display";
-                    }
-                });';
-        $this->_elements[] = $this->createFormElement('html',
-                '<div style="display: inline; margin-right: 10px;"
-                class="flatpickr" name ="'. $inputname .'_flatpickr">');
-        $this->_elements[] = $this->createFormElement('text', 'date_time_selector', '',
-                array('data-input' => 'data-input', 'placeholder' => $placeholder));
-        $this->_elements[] = $this->createFormElement('static', 'flatpickrscript', '',
-                '<a style="text-decoration: none;" class="input-button" title="Calendar" data-toggle>
-                    <i class="fa fa-calendar" aria-hidden="true"></i>
-                </a>' .
-                // Only display the clear button if it is enabled.
-                ($this->_options['clear'] ? '<a style="text-decoration: none;" class="input-button" title="Clear" data-clear>
-                    <i class="fa fa-eraser" aria-hidden="true"></i>
-                </a>' : '') . '
-                </div>
-                <script>
-                    if (window.addEventListener) {
-                        window.addEventListener("load", function(){'. $flatpickrdefinition .'});
-                    } else {
-                        // Handle IE8 and below.
-                        window.attachEvent("onload", function(){'. $flatpickrdefinition .'});
-                    }
-                </script>');
-
+        foreach ($dateformat as $key => $value) {
+            // E_STRICT creating elements without forms is nasty because it internally uses $this
+            $this->_elements[] = $this->createFormElement('select', $key, get_string($key, 'form'), $value, $this->getAttributes(), true);
+        }
+        // The YUI2 calendar only supports the gregorian calendar type so only display the calendar image if this is being used.
+        if ($calendartype->get_name() === 'gregorian') {
+            $image = $OUTPUT->pix_icon('i/calendar', get_string('calendar', 'calendar'), 'moodle');
+            $this->_elements[] = $this->createFormElement('link', 'calendar',
+                    null, '#', $image,
+                    array('class' => 'visibleifjs'));
+        }
         // If optional we add a checkbox which the user can use to turn if on
         if ($this->_options['optional']) {
             $this->_elements[] = $this->createFormElement('checkbox', 'enabled', null, get_string('enable'), $this->getAttributes(), true);
@@ -228,6 +152,7 @@ class MoodleQuickForm_date_time_selector extends MoodleQuickForm_group {
                 $element->setHiddenLabel(true);
             }
         }
+
     }
 
     /**
@@ -239,6 +164,7 @@ class MoodleQuickForm_date_time_selector extends MoodleQuickForm_group {
      * @return bool
      */
     function onQuickFormEvent($event, $arg, &$caller) {
+        $this->setMoodleForm($caller);
         switch ($event) {
             case 'updateValue':
                 // Constant values override both default and submitted ones
@@ -255,14 +181,15 @@ class MoodleQuickForm_date_time_selector extends MoodleQuickForm_group {
                 }
                 $requestvalue=$value;
                 if ($value == 0) {
-                    $value = $this->_options['defaulttime'];
-                    if (!$value) {
-                        $value = time();
-                    }
+                    $value = time();
                 }
                 if (!is_array($value)) {
-                    $value -= $value % ($this->_options['step'] * 60); // Round value to previous multiple of step.
-                    $value = array('date_time_selector' => $value);
+                    $calendartype = \core_calendar\type_factory::get_calendar_instance();
+                    $currentdate = $calendartype->timestamp_to_date_array($value, $this->_options['timezone']);
+                    $value = array(
+                        'day' => $currentdate['mday'],
+                        'month' => $currentdate['mon'],
+                        'year' => $currentdate['year']);
                     // If optional, default to off, unless a date was provided.
                     if ($this->_options['optional']) {
                         $value['enabled'] = $requestvalue != 0;
@@ -277,9 +204,16 @@ class MoodleQuickForm_date_time_selector extends MoodleQuickForm_group {
             case 'createElement':
                 // Optional is an optional param, if its set we need to add a disabledIf rule.
                 // If its empty or not specified then its not an optional dateselector.
-                if (isset($arg[2]['optional']) && $arg[2]['optional'] && !$this->_usedcreateelement) {
-                    $caller->disabledIf($arg[0] . '[date_time_selector]', $arg[0] . '[enabled]');
-                    $caller->disabledIf($arg[0] . '_flatpickr_display', $arg[0] . '[enabled]');
+                if (!empty($arg[2]['optional']) && !empty($arg[0])) {
+                    // When using the function addElement, rather than createElement, we still
+                    // enter this case, making this check necessary.
+                    if ($this->_usedcreateelement) {
+                        $caller->disabledIf($arg[0] . '[day]', $arg[0] . '[enabled]');
+                        $caller->disabledIf($arg[0] . '[month]', $arg[0] . '[enabled]');
+                        $caller->disabledIf($arg[0] . '[year]', $arg[0] . '[enabled]');
+                    } else {
+                        $caller->disabledIf($arg[0], $arg[0] . '[enabled]');
+                    }
                 }
                 return parent::onQuickFormEvent($event, $arg, $caller);
                 break;
@@ -305,7 +239,7 @@ class MoodleQuickForm_date_time_selector extends MoodleQuickForm_group {
 
         $html = $this->_wrap[0];
         if ($this->_usedcreateelement) {
-            $html .= html_writer::tag('span', $renderer->toHtml(), array('class' => 'fdate_time_selector'));
+            $html .= html_writer::tag('span', $renderer->toHtml(), array('class' => 'fdate_selector'));
         } else {
             $html .= $renderer->toHtml();
         }
@@ -340,23 +274,22 @@ class MoodleQuickForm_date_time_selector extends MoodleQuickForm_group {
                 $valuearray += $thisexport;
             }
         }
-        if (count($valuearray)){
+        if (count($valuearray) && isset($valuearray['year'])) {
             if($this->_options['optional']) {
                 // If checkbox is on, the value is zero, so go no further
                 if(empty($valuearray['enabled'])) {
                     return $this->_prepareValue(0, $assoc);
                 }
             }
-
-            $value = $valuearray['date_time_selector'];
-            // Validate $value. The user could have modified it in-browser.
-            $value -= $value % ($this->_options['step'] * 60);
-            $mincheck = strtotime('1' . ' January ' . $this->_options['startyear']) > $value;
-            $maxcheck = strtotime('1' . ' January ' . $this->_options['stopyear']) < $value;
-            // Silently set value to default if it failed validation.
-            if (empty($value) || $mincheck || $maxcheck) {
-                $value = null;
-            }
+            // Get the calendar type used - see MDL-18375.
+            $calendartype = \core_calendar\type_factory::get_calendar_instance();
+            $gregoriandate = $calendartype->convert_to_gregorian($valuearray['year'], $valuearray['month'], $valuearray['day']);
+            $value = make_timestamp($gregoriandate['year'],
+                                                      $gregoriandate['month'],
+                                                      $gregoriandate['day'],
+                                                      0, 0, 0,
+                                                      $this->_options['timezone'],
+                                                      true);
 
             return $this->_prepareValue($value, $assoc);
         } else {

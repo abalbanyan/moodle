@@ -34,7 +34,7 @@ $THEME->doctype = 'html5';
 $THEME->yuicssmodules = array();
 $THEME->name = 'bootstrapbase';
 $THEME->parents = array();
-$THEME->sheets = array('moodle');
+$THEME->sheets = array('moodle', 'flatpickr.min', 'flatpickr-ie', 'flatpickr-moodle');
 $THEME->enable_dock = false;
 $THEME->editor_sheets = array('editor');
 
